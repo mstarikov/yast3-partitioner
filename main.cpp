@@ -1,7 +1,10 @@
 #include "string"
 #include "list"
 #include "sstream"
+#include "fstream"
 #include "cstdio"
+
+#include "nlohmann/json.hpp"
 
 #include "YUI.h"
 #include "YApplication.h"
@@ -22,6 +25,7 @@
 #include "YTableHeader.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 #define LAYOUT_HELPER_CONVENIENCE( AL ) \
 inline YWidget * at##AL ( YWidget * w ) { return YUI::widgetFactory()->create##AL( w ); }
@@ -52,35 +56,35 @@ inline YWidget * unsquashedLabeledFrameBox( YWidget * parent, const std::string 
 string runAnsible(string arguments)
 {
 
-    //TODO: find ansible command
     string program = "/usr/bin/ansible ";
     string result = "";
     program = program.append(arguments);
-    cout << program.find("ansible") << endl;
-    //Run ansible Ad-Hoc command and store output
+    //convert program path with arguments into char array for popen
     const char *command = program.c_str();
-    //read result and trim top line(non JSON)
-    FILE *program_output = popen(command, "r");
-    char buffer[256];
+    //FILE *program_output =
+    popen(command, "r");
+    /*char buffer[256];
     while(fgets(buffer, sizeof(buffer), program_output) != NULL)
     {
-        if(string(buffer).find("localhost | SUCCESS") == NULL)
+        if(string(buffer).find("localhost | SUCCESS") == 0)
         {
-            // we have successful ansible command, skipping header
+             // we have successful ansible command, skipping header
         }
         else
         {
-            result += buffer;
+           result += buffer;
         }
 
     }
-    cout << "Here is the resul: \n" + result<< endl;
     //TODO check if command is successful.
-    return program_stdout.remove("localhost | SUCCESS =>");
+    return result;*/
 }
 
 void parseAnsible(string json_text)
 {
+    ifstream in("./ansible_facts.json");
+    json fact_object = json::parse(in);
+    cout << ("This is facts: %s \n",  fact_object["ansible_facts"]) << endl;
     //Convert stdout to JSON
     /*QJsonParseError jerror;
     QJsonDocument facts = QJsonDocument::fromJson(json_text.toLatin1(), &jerror);
@@ -96,8 +100,8 @@ void parseAnsible(string json_text)
 int main( int argc, char **argv )
 {
 
-    string json = runAnsible("localhost -m command -a ls");
-
+    string json_string = runAnsible("localhost -m setup | sed -e 's/localhost | SUCCESS =>/''/g' > ./ansible_facts.json");
+    parseAnsible(json_string);
     //YUILog::enableDebugLogging( true );
 
     // auto f-keys assigned to Buttoms with that label
