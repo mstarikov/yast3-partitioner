@@ -53,38 +53,48 @@ inline YWidget * unsquashedLabeledFrameBox( YWidget * parent, const std::string 
 { return labeledFrameBox( parent, label, hweight, false ); }
 
 
-string runAnsible(string arguments)
+void runAnsible(string arguments)
 {
+    if (remove("./ansible_facts.json") != 0)
+        perror("Error deleting file" );
+    else
+        puts("File successfully deleted");
 
-    string program = "/usr/bin/ansible ";
-    string result = "";
-    program = program.append(arguments);
-    //convert program path with arguments into char array for popen
+    ofstream ansible_facts_document("./ansible_facts.json");
+    string program = "/usr/bin/ansible " + arguments;
     const char *command = program.c_str();
-    //FILE *program_output =
-    popen(command, "r");
-    /*char buffer[256];
-    while(fgets(buffer, sizeof(buffer), program_output) != NULL)
-    {
-        if(string(buffer).find("localhost | SUCCESS") == 0)
-        {
-             // we have successful ansible command, skipping header
-        }
-        else
-        {
-           result += buffer;
-        }
 
+    FILE * stream;
+    const int max_buffer = 256;
+    char buffer[max_buffer];
+    stream = popen(command, "r");
+    if (stream)
+    {
+        while (!feof(stream))
+        {
+            if (fgets(buffer, max_buffer, stream) != NULL)
+            {
+                if( strstr(buffer,"SUCCESS => {"))
+                {
+                    ansible_facts_document << "{\n";
+                }
+                else
+                {
+                    ansible_facts_document << buffer;
+                }
+
+            }
+        }
+        pclose(stream);
     }
-    //TODO check if command is successful.
-    return result;*/
+    ansible_facts_document.close();
 }
 
-void parseAnsible(string json_text)
+void parseAnsible()
 {
     ifstream in("./ansible_facts.json");
     json fact_object = json::parse(in);
-    cout << ("This is facts: %s \n",  fact_object["ansible_facts"]) << endl;
+    cout << "This is facts: \n" <<  fact_object["ansible_facts"]["ansible_all_ipv4_addresses"] << endl;
     //Convert stdout to JSON
     /*QJsonParseError jerror;
     QJsonDocument facts = QJsonDocument::fromJson(json_text.toLatin1(), &jerror);
@@ -100,8 +110,10 @@ void parseAnsible(string json_text)
 int main( int argc, char **argv )
 {
 
-    string json_string = runAnsible("localhost -m setup | sed -e 's/localhost | SUCCESS =>/''/g' > ./ansible_facts.json");
-    parseAnsible(json_string);
+    //runAnsible("localhost -m setup | sed -e 's/localhost | SUCCESS =>/''/g' > ./ansible_facts.json");
+    string arguments = "localhost -m setup";
+    runAnsible(arguments);
+    parseAnsible();
     //YUILog::enableDebugLogging( true );
 
     // auto f-keys assigned to Buttoms with that label
