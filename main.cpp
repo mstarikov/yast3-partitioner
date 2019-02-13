@@ -136,11 +136,11 @@ int main( int argc, char **argv )
                 for(auto& at : partitions.items())
                 {
                     json disk_label = at.value()["links"]["labels"];
-                    if (!disk_label.empty())
+                    if (disk_label.empty())
                     {
-                        new YTreeItem( t, at.key() + " with size " + string(at.value()["size"]) + " and label " + string(disk_label[0]));
+                        disk_label[0] = "Undefined";
                     }
-
+                    new YTreeItem( t, at.key() + " with size " + string(at.value()["size"]) + " and label " + string(disk_label[0]));
                 }
 
             }
