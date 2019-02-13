@@ -90,30 +90,20 @@ void runAnsible(string arguments)
     ansible_facts_document.close();
 }
 
-void parseAnsible()
+json parseAnsible()
 {
-    ifstream in("./ansible_facts.json");
-    json fact_object = json::parse(in);
-    cout << "This is facts: \n" <<  fact_object["ansible_facts"]["ansible_all_ipv4_addresses"] << endl;
-    //Convert stdout to JSON
-    /*QJsonParseError jerror;
-    QJsonDocument facts = QJsonDocument::fromJson(json_text.toLatin1(), &jerror);
-    if (jerror.error != QJsonParseError::NoError)
-    {
-        qDebug() << "Error happened:" << jerror.errorString();
-    }
-    //Get object from Document & Unpack main ansible_facts section
-    QJsonObject facts_object = facts.object()["ansible_facts"].toObject();
-    return facts_object;*/
+    ifstream facts_file("./ansible_facts.json");
+    json facts_object = json::parse(facts_file)["ansible_facts"]["ansible_devices"];
+    return facts_object;
 }
 
 int main( int argc, char **argv )
 {
 
     //runAnsible("localhost -m setup | sed -e 's/localhost | SUCCESS =>/''/g' > ./ansible_facts.json");
-    string arguments = "localhost -m setup";
-    runAnsible(arguments);
-    parseAnsible();
+    //string arguments = "localhost -m setup";
+    //runAnsible(arguments);
+    json ansible_devices = parseAnsible();
     //YUILog::enableDebugLogging( true );
 
     // auto f-keys assigned to Buttoms with that label
@@ -138,39 +128,22 @@ int main( int argc, char **argv )
         tree->setNotify( true );
         {
             YItemCollection items;
-            auto t = new YTreeItem( "Item 1" );
-            items.push_back( t );
+            auto t = new YTreeItem( "Hard Disks" );
+            for(auto& it : ansible_devices.items())
+            {
+                items.push_back( (t = new YTreeItem(it.key() )) );
+                json partitions = it.value()["partitions"];
+                for(auto& at : partitions.items())
+                {
+                    json disk_label = at.value()["links"]["labels"];
+                    if (!disk_label.empty())
+                    {
+                        new YTreeItem( t, at.key() + " with size " + string(at.value()["size"]) + " and label " + string(disk_label[0]));
+                    }
 
-            items.push_back( (t = new YTreeItem( "Item 12" )) );
-            new YTreeItem( t, "Item 1" );
-            items.push_back( (t = new YTreeItem( "Item 123" )) );
-            new YTreeItem( t, "Item 1" );
-            t = new YTreeItem( t, "Item 2" );
-            new YTreeItem( t, "Item 1" );
-            items.push_back( (t = new YTreeItem( "Item 1234" )) );
-            new YTreeItem( t, "Item 1" );
-            new YTreeItem( t, "Item 2" );
-            t = new YTreeItem( t, "Item 3" );
-            new YTreeItem( t, "Item 1" );
-            new YTreeItem( t, "Item 2" );
-            items.push_back( (t = new YTreeItem( "Item 12345" )) );
-            new YTreeItem( t, "Item 1" );
-            new YTreeItem( t, "Item 2" );
-            new YTreeItem( t, "Item 3" );
-            t = new YTreeItem( t, "Item 4" );
-            new YTreeItem( t, "Item 1" );
-            new YTreeItem( t, "Item 2" );
-            new YTreeItem( t, "Item 3" );
-            items.push_back( (t = new YTreeItem( "Item 123456" )) );
-            new YTreeItem( t, "Item 1" );
-            new YTreeItem( t, "Item 2" );
-            new YTreeItem( t, "Item 3" );
-            new YTreeItem( t, "Item 4" );
-            t = new YTreeItem( t, "Item 5" );
-            new YTreeItem( t, "Item 1" );
-            new YTreeItem( t, "Item 2" );
-            new YTreeItem( t, "Item 3" );
-            new YTreeItem( t, "Item 4" );
+                }
+
+            }
             tree->addItems( items ); // This is more efficient than repeatedly calling cbox->addItem
         }
     }
@@ -187,6 +160,7 @@ int main( int argc, char **argv )
         auto table		= YUI::widgetFactory()->createTable( atLeft(frame), head );
         table->setNotify( true );
 
+        //NEXT: when selecting disk or partition in left pane this area should show information.
         YItemCollection items;
         items.push_back( new YTableItem( "a", "b", "c", "extra" ) );
         items.push_back( new YTableItem( "aa", "bb", "cc" ) );
